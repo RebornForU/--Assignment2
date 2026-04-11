@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AI爆发与科技巨头股价全景可视分析</title>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <style>
+        /* 全局暗黑背景 */
+        body { 
+            font-family: 'Segoe UI', Tahoma, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            height: 100vh; 
+            background-color: #0b0f19; 
+            color: #e2e8f0; 
+        }
+        
+        #chart-container { 
+            width: 78%; 
+            padding: 25px 35px; 
+            background-color: #111827; 
+            border-right: 1px solid #1e293b; 
+            display: flex; 
+            flex-direction: column; 
+            box-shadow: inset 0 0 30px rgba(0,0,0,0.5); 
+        }
+        #vis { 
+            flex-grow: 1; 
+            width: 100%; 
+            height: 100%; 
+            margin-top: 15px; 
+        }
+        
+        #doc-container { 
+            width: 22%; 
+            padding: 35px 30px; 
+            overflow-y: auto; 
+            background-color: #0b0f19; 
+        }
+        
+        /* 放大所有文本字体 */
+        h2 { 
+            color: #38bdf8; 
+            letter-spacing: 1px; 
+            font-size: 26px; /* 标题放大 */
+            margin-bottom: 20px;
+        } 
+        h3 { 
+            color: #38bdf8;
+            margin-top: 35px; 
+            border-left: 4px solid #10b981; 
+            padding-left: 12px; 
+            font-size: 20px; /* 副标题放大 */
+            letter-spacing: 1px;
+        }
+        p, li { 
+            color: #94a3b8; 
+            font-size: 16px; /* 正文放大 */
+            line-height: 1.8; /* 增加行高，提升阅读舒适度 */
+            margin-bottom: 12px;
+        }
+        
+        .controls { 
+            padding-bottom: 15px; 
+            border-bottom: 1px solid #1e293b; 
+            display: flex; 
+            gap: 10px; 
+            align-items: center; 
+        }
+        button { 
+            padding: 10px 20px; 
+            background-color: transparent; 
+            color: #38bdf8; 
+            border: 1px solid #38bdf8; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-size: 15px; /* 按钮文字放大 */
+            font-weight: 600; 
+            transition: all 0.3s ease; 
+            box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); 
+        }
+        button:hover { 
+            background-color: rgba(56, 189, 248, 0.1); 
+            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); 
+            text-shadow: 0 0 5px rgba(56, 189, 248, 0.8);
+        }
+        button:disabled { 
+            color: #475569; 
+            border-color: #475569; 
+            box-shadow: none; 
+            cursor: not-allowed; 
+        }
+        
+        .badge { 
+            display: inline-block; 
+            padding: 3px 10px; 
+            border-radius: 4px; 
+            font-size: 14px; /* 徽章文字放大 */
+            font-weight: bold; 
+            margin-left: 5px; 
+        }
+        .badge-nvda { background-color: rgba(118, 185, 0, 0.15); color: #76b900; border: 1px solid #76b900; box-shadow: 0 0 8px rgba(118, 185, 0, 0.3);}
+        .badge-tsla { background-color: rgba(226, 61, 64, 0.15); color: #e23d40; border: 1px solid #e23d40; box-shadow: 0 0 8px rgba(226, 61, 64, 0.3);}
+
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    </style>
+</head>
+<body>
+    <div id="app" style="display: flex; width: 100%;">
+        <div id="chart-container">
+            <div class="controls">
+                <h2 style="margin: 0; flex-grow: 1;">NVIDIA vs Tesla：AI热度如何重塑股价</h2>
+                <button @click="renderChart" :disabled="isLoading">
+                    {{ isLoading ? 'SYSTEM BOOTING...' : '同步刷新数据 (SYNC)' }}
+                </button>
+            </div>
+            <div id="vis"></div>
+        </div>
+
+        <div id="doc-container">
+            <h2>项目说明文档</h2>
+            <p>本作品展示了自2021年以来，AI行业热度与科技巨头股价之间的深度联动关系。</p>
+            
+            <h3>1. 研究问题</h3>
+            <p>探讨生成式AI的爆发，是否真实拉动了相关企业的股价？为什么NVDA和TSLA会产生巨大的走势分化？</p>
+            
+            <h3>2. 设计决策 (全景视角)</h3>
+            <ul>
+                <li><strong>多源数据融合：</strong> 通过独立双轴技术将“行业热度”与“企业股价”进行叠加。</li>
+                <li><strong>暗黑科技风格：</strong> 采用低光背景衬托高对比度数据线，聚焦视觉核心。</li>
+                <li><strong>叙事时间线：</strong> 阶梯式布局关键事件，避免视觉拥挤。</li>
+            </ul>
+
+            <h3>3. 核心数据洞察</h3>
+            <ul>
+                <li><strong>NVIDIA <span class="badge badge-nvda">NVDA</span>：</strong> 股价走势与 AI 热度呈现极强的同步爆发。</li>
+                <li><strong>Tesla <span class="badge badge-tsla">TSLA</span>：</strong> 市场目前更看重 AI 的“硬件基建”，其股价走势在热度高峰期出现了背离。</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        const { createApp } = Vue;
+        createApp({
+            data() { return { isLoading: true, chartData: [], trendData: [] } },
+            methods: {
+                parseStockCSV(csvText, symbol) {
+                    const lines = csvText.trim().split(/\r?\n/);
+                    const headers = lines[0].split(',');
+                    const dIdx = headers.indexOf('Date'), cIdx = headers.indexOf('Close');
+                    let data = [];
+                    for(let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        if(cols.length > cIdx) {
+                            const dateStr = cols[dIdx].trim().split(' ')[0];
+                            const ts = new Date(dateStr).getTime();
+                            if(!isNaN(ts)) data.push({ Date: ts, Symbol: symbol, Price: parseFloat(cols[cIdx]) });
+                        }
+                    }
+                    data.sort((a,b) => a.Date - b.Date);
+                    const base = data[0].Price;
+                    return data.map(d => ({ ...d, Pct: ((d.Price - base)/base)*100 }));
+                },
+                parseTrendCSV(csvText) {
+                    const lines = csvText.trim().split(/\r?\n/);
+                    let data = [];
+                    for(let i = 1; i < lines.length; i++) {
+                        const cols = lines[i].split(',');
+                        if(cols.length >= 2) {
+                            const ts = new Date(cols[0].trim()).getTime();
+                            if(!isNaN(ts)) data.push({ Date: ts, Heat: parseFloat(cols[1]) });
+                        }
+                    }
+                    return data;
+                },
+                async renderChart() {
+                    try {
+                        this.isLoading = true;
+                        const [resN, resT, resTr] = await Promise.all([
+                            fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
+                        ]);
+                        this.chartData = [...this.parseStockCSV(await resN.text(), 'NVDA'), ...this.parseStockCSV(await resT.text(), 'TSLA')];
+                        this.trendData = this.parseTrendCSV(await resTr.text());
+
+                        const spec = {
+                            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+                            "config": {
+                                "background": "transparent",
+                                "axis": {
+                                    "domainColor": "#334155",
+                                    "gridColor": "#1e293b",
+                                    "tickColor": "#334155",
+                                    "labelColor": "#94a3b8",
+                                    "titleColor": "#cbd5e1",
+                                    "titleFontSize": 14, /* 放大坐标轴标题 */
+                                    "labelFontSize": 12  /* 放大坐标轴刻度数字 */
+                                },
+                                "view": {"stroke": "transparent"},
+                                "legend": {"labelColor": "#e2e8f0", "titleColor": "#38bdf8", "titleFontSize": 14, "labelFontSize": 13}
+                            },
+                            "data": { "values": this.chartData },
+                            "vconcat": [
+                                {
+                                    "width": "container", "height": 450,
+                                    "resolve": {"scale": {"y": "independent"}},
+                                    "layer": [
+                                        {
+                                            "data": { "values": this.trendData },
+                                            "mark": { "type": "area", "color": "#0ea5e9", "opacity": 0.15, "interpolate": "monotone" },
+                                            "encoding": {
+                                                "x": { "field": "Date", "type": "temporal", "scale": {"domain": {"param": "brush"}}, "axis": {"grid": false} },
+                                                "y": { "field": "Heat", "type": "quantitative", "axis": {"title": "AI 搜索热度 (Search Trend)", "orient": "right", "grid": false} }
+                                            }
+                                        },
+                                        {
+                                            "mark": { "type": "rule", "color": "#64748b", "strokeDash": [2,2] },
+                                            "encoding": { "y": { "datum": 0 } }
+                                        },
+                                        {
+                                            "mark": { "type": "line", "tooltip": true, "strokeWidth": 2.5 },
+                                            "encoding": {
+                                                "x": { "field": "Date", "type": "temporal", "scale": {"domain": {"param": "brush"}} },
+                                                "y": { "field": "Pct", "type": "quantitative", "axis": {"title": "相对涨跌幅 (%)"} },
+                                                "color": { "field": "Symbol", "type": "nominal", "scale": {"range": ["#a3e635", "#fb7185"]} }
+                                            }
+                                        },
+                                        {
+                                            "data": { "values": [ {d: "2022-09-30"}, {d: "2022-11-30"}, {d: "2023-05-24"} ] },
+                                            "mark": { "type": "rule", "color": "#475569", "strokeDash": [4,4] },
+                                            "encoding": { "x": { "field": "d", "type": "temporal", "scale": {"domain": {"param": "brush"}} } }
+                                        },
+                                        {
+                                            "data": { "values": [
+                                                {d: "2022-09-30", t: "Tesla AI Day", y: 25},
+                                                {d: "2022-11-30", t: "▶ ChatGPT发布", y: 55},
+                                                {d: "2023-05-24", t: "▶ NVDA财报爆发", y: 85}
+                                            ] },
+                                            /* 放大图表内的事件标注文字，从12放大到14 */
+                                            "mark": { "type": "text", "align": "left", "dx": 8, "fontWeight": "bold", "fontSize": 14, "color": "#e2e8f0" },
+                                            "encoding": {
+                                                "x": { "field": "d", "type": "temporal", "scale": {"domain": {"param": "brush"}} },
+                                                "y": { "field": "y", "type": "quantitative", "scale": null },
+                                                "text": { "field": "t" }
+                                            }
+                                        }
+                                    ]
+                                },
+                                {
+                                    "width": "container", "height": 60,
+                                    "mark": { "type": "line", "strokeWidth": 1.5 },
+                                    "params": [{ "name": "brush", "select": {"type": "interval", "encodings": ["x"]} }],
+                                    "encoding": {
+                                        "x": { "field": "Date", "type": "temporal", "axis": {"title": "全局时间轴 (Global Timeline)"} },
+                                        "y": { "field": "Pct", "type": "quantitative", "axis": null },
+                                        "color": { "field": "Symbol", "type": "nominal", "legend": null, "scale": {"range": ["#a3e635", "#fb7185"]} }
+                                    }
+                                }
+                            ]
+                        };
+                        vegaEmbed('#vis', spec, {actions: false});
+                        this.isLoading = false;
+                    } catch (e) { console.error(e); this.isLoading = false; }
+                }
+            },
+            mounted() { this.renderChart(); }
+        }).mount('#app')
+    </script>
+</body>
+</html>
