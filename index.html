@@ -8,289 +8,564 @@
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
     <style>
-        /* 全局暗黑背景 */
-        body { 
-            font-family: 'Segoe UI', Tahoma, sans-serif; 
-            margin: 0; 
-            padding: 0; 
-            display: flex; 
-            height: 100vh; 
-            background-color: #0b0f19; 
-            color: #e2e8f0; 
-        }
-        
-        #chart-container { 
-            width: 78%; 
-            padding: 25px 35px; 
-            background-color: #111827; 
-            border-right: 1px solid #1e293b; 
-            display: flex; 
-            flex-direction: column; 
-            box-shadow: inset 0 0 30px rgba(0,0,0,0.5); 
-        }
-        #vis { 
-            flex-grow: 1; 
-            width: 100%; 
-            height: 100%; 
-            margin-top: 15px; 
-        }
-        
-        #doc-container { 
-            width: 22%; 
-            padding: 35px 30px; 
-            overflow-y: auto; 
-            background-color: #0b0f19; 
-        }
-        
-        /* 放大所有文本字体 */
-        h2 { 
-            color: #38bdf8; 
-            letter-spacing: 1px; 
-            font-size: 26px; /* 标题放大 */
-            margin-bottom: 20px;
-        } 
-        h3 { 
-            color: #38bdf8;
-            margin-top: 35px; 
-            border-left: 4px solid #10b981; 
-            padding-left: 12px; 
-            font-size: 20px; /* 副标题放大 */
-            letter-spacing: 1px;
-        }
-        p, li { 
-            color: #94a3b8; 
-            font-size: 16px; /* 正文放大 */
-            line-height: 1.8; /* 增加行高，提升阅读舒适度 */
-            margin-bottom: 12px;
-        }
-        
-        .controls { 
-            padding-bottom: 15px; 
-            border-bottom: 1px solid #1e293b; 
-            display: flex; 
-            gap: 10px; 
-            align-items: center; 
-        }
-        button { 
-            padding: 10px 20px; 
-            background-color: transparent; 
-            color: #38bdf8; 
-            border: 1px solid #38bdf8; 
-            border-radius: 4px; 
-            cursor: pointer; 
-            font-size: 15px; /* 按钮文字放大 */
-            font-weight: 600; 
-            transition: all 0.3s ease; 
-            box-shadow: 0 0 10px rgba(56, 189, 248, 0.15); 
-        }
-        button:hover { 
-            background-color: rgba(56, 189, 248, 0.1); 
-            box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); 
-            text-shadow: 0 0 5px rgba(56, 189, 248, 0.8);
-        }
-        button:disabled { 
-            color: #475569; 
-            border-color: #475569; 
-            box-shadow: none; 
-            cursor: not-allowed; 
-        }
-        
-        .badge { 
-            display: inline-block; 
-            padding: 3px 10px; 
-            border-radius: 4px; 
-            font-size: 14px; /* 徽章文字放大 */
-            font-weight: bold; 
-            margin-left: 5px; 
-        }
-        .badge-nvda { background-color: rgba(118, 185, 0, 0.15); color: #76b900; border: 1px solid #76b900; box-shadow: 0 0 8px rgba(118, 185, 0, 0.3);}
-        .badge-tsla { background-color: rgba(226, 61, 64, 0.15); color: #e23d40; border: 1px solid #e23d40; box-shadow: 0 0 8px rgba(226, 61, 64, 0.3);}
+        *, *::before, *::after { box-sizing: border-box; }
 
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0b0f19; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #334155; }
+        :root {
+            --bg-deep:    #070b14;
+            --bg-panel:   #0d1220;
+            --bg-card:    #111827;
+            --bg-card2:   #141d2e;
+            --border:     #1e2d45;
+            --accent:     #38bdf8;
+            --accent-dim: rgba(56,189,248,0.12);
+            --green:      #a3e635;
+            --red:        #fb7185;
+            --text-hi:    #e2e8f0;
+            --text-mid:   #94a3b8;
+            --text-lo:    #475569;
+            --glow-blue:  0 0 18px rgba(56,189,248,0.25);
+            --glow-green: 0 0 12px rgba(163,230,53,0.3);
+        }
+
+        html, body {
+            margin: 0; padding: 0;
+            height: 100%;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg-deep);
+            color: var(--text-hi);
+            overflow: hidden;
+        }
+
+        /* ── App shell ── */
+        #app {
+            display: grid;
+            grid-template-columns: 1fr 340px;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+        }
+
+        /* ── Top header bar ── */
+        #header {
+            grid-column: 1 / -1;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 32px;
+            height: 58px;
+            background: linear-gradient(90deg, #0d1220 0%, #0f1929 60%, #0d1220 100%);
+            border-bottom: 1px solid var(--border);
+            box-shadow: 0 2px 20px rgba(0,0,0,0.5);
+            position: relative;
+            overflow: hidden;
+        }
+        #header::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent 0%, rgba(56,189,248,0.04) 50%, transparent 100%);
+            pointer-events: none;
+        }
+        .header-title {
+            font-size: 17px;
+            font-weight: 700;
+            color: var(--text-hi);
+            letter-spacing: 0.5px;
+            flex: 1;
+        }
+        .header-title span {
+            color: var(--accent);
+        }
+        .header-badges {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+        .badge-dot {
+            width: 7px; height: 7px;
+            border-radius: 50%;
+        }
+        .badge-nvda {
+            background: rgba(163,230,53,0.1);
+            color: var(--green);
+            border: 1px solid rgba(163,230,53,0.35);
+        }
+        .badge-nvda .badge-dot { background: var(--green); box-shadow: var(--glow-green); }
+        .badge-tsla {
+            background: rgba(251,113,133,0.1);
+            color: var(--red);
+            border: 1px solid rgba(251,113,133,0.35);
+        }
+        .badge-tsla .badge-dot { background: var(--red); box-shadow: 0 0 8px rgba(251,113,133,0.4); }
+
+        .sync-btn {
+            padding: 7px 18px;
+            background: var(--accent-dim);
+            color: var(--accent);
+            border: 1px solid rgba(56,189,248,0.4);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.8px;
+            transition: all 0.25s;
+            box-shadow: var(--glow-blue);
+            white-space: nowrap;
+        }
+        .sync-btn:hover {
+            background: rgba(56,189,248,0.2);
+            box-shadow: 0 0 24px rgba(56,189,248,0.4);
+        }
+        .sync-btn:disabled {
+            color: var(--text-lo);
+            border-color: var(--text-lo);
+            box-shadow: none;
+            cursor: not-allowed;
+            background: transparent;
+        }
+
+        /* ── Chart panel ── */
+        #chart-container {
+            grid-column: 1;
+            grid-row: 2;
+            padding: 20px 28px 16px;
+            background: var(--bg-panel);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .chart-subtitle {
+            font-size: 12px;
+            color: var(--text-lo);
+            letter-spacing: 0.5px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+        }
+
+        #vis {
+            flex: 1;
+            width: 100%;
+            min-height: 0;
+        }
+
+        /* Loading overlay */
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(7,11,20,0.85);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+            z-index: 10;
+            backdrop-filter: blur(4px);
+            transition: opacity 0.4s;
+        }
+        .loading-overlay.hidden { opacity: 0; pointer-events: none; }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 2px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+            font-size: 12px;
+            color: var(--accent);
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* ── Doc panel ── */
+        #doc-container {
+            grid-column: 2;
+            grid-row: 2;
+            background: var(--bg-deep);
+            border-left: 1px solid var(--border);
+            overflow-y: auto;
+            padding: 20px 20px 32px;
+        }
+
+        #doc-container::-webkit-scrollbar { width: 5px; }
+        #doc-container::-webkit-scrollbar-track { background: transparent; }
+        #doc-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+
+        .doc-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 16px 18px;
+            margin-bottom: 12px;
+            position: relative;
+            overflow: hidden;
+        }
+        .doc-section::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0;
+            width: 3px; height: 100%;
+            border-radius: 10px 0 0 10px;
+        }
+        .doc-section.accent-blue::before  { background: var(--accent); }
+        .doc-section.accent-green::before { background: var(--green); }
+        .doc-section.accent-purple::before { background: #a78bfa; }
+        .doc-section.accent-orange::before { background: #fb923c; }
+
+        .doc-section-title {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+            margin: 0 0 10px 0;
+            padding-left: 10px;
+        }
+        .accent-blue  .doc-section-title { color: var(--accent); }
+        .accent-green .doc-section-title { color: var(--green); }
+        .accent-purple .doc-section-title { color: #a78bfa; }
+        .accent-orange .doc-section-title { color: #fb923c; }
+
+        .doc-section p {
+            font-size: 13px;
+            color: var(--text-mid);
+            line-height: 1.75;
+            margin: 0 0 8px 0;
+            padding-left: 10px;
+        }
+        .doc-section p:last-child { margin-bottom: 0; }
+        .doc-section strong { color: var(--text-hi); }
+
+        .doc-list {
+            list-style: none;
+            margin: 0;
+            padding: 0 0 0 10px;
+        }
+        .doc-list li {
+            font-size: 13px;
+            color: var(--text-mid);
+            line-height: 1.7;
+            padding: 5px 0;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            gap: 8px;
+        }
+        .doc-list li:last-child { border-bottom: none; }
+        .doc-list li::before {
+            content: '›';
+            color: var(--accent);
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding-left: 10px;
+            margin-top: 4px;
+        }
+        .stat-card {
+            background: var(--bg-card2);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+        }
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-lo);
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            margin-bottom: 4px;
+        }
+        .stat-value {
+            font-size: 18px;
+            font-weight: 700;
+            color: var(--text-hi);
+        }
+        .stat-value.green { color: var(--green); }
+        .stat-value.blue  { color: var(--accent); }
+
+        .doc-intro {
+            font-size: 13px;
+            color: var(--text-mid);
+            line-height: 1.7;
+            margin: 0 0 12px 0;
+            padding: 12px 14px;
+            background: var(--accent-dim);
+            border: 1px solid rgba(56,189,248,0.2);
+            border-radius: 8px;
+        }
+        .doc-intro strong { color: var(--accent); }
     </style>
 </head>
 <body>
-    <div id="app" style="display: flex; width: 100%;">
-        <div id="chart-container">
-            <div class="controls">
-                <h2 style="margin: 0; flex-grow: 1;">NVIDIA vs Tesla：AI热度如何重塑股价</h2>
-                <button @click="renderChart" :disabled="isLoading">
-                    {{ isLoading ? 'SYSTEM BOOTING...' : '同步刷新数据 (SYNC)' }}
-                </button>
-            </div>
-            <div id="vis"></div>
+<div id="app">
+
+    <!-- Header -->
+    <div id="header">
+        <div class="header-title">
+            <span>AI</span> 爆发与科技巨头股价全景可视分析
+        </div>
+        <div class="header-badges">
+            <span class="badge badge-nvda"><span class="badge-dot"></span>NVDA</span>
+            <span class="badge badge-tsla"><span class="badge-dot"></span>TSLA</span>
+        </div>
+        <button class="sync-btn" @click="renderChart" :disabled="isLoading">
+            {{ isLoading ? 'LOADING...' : '⟳ SYNC DATA' }}
+        </button>
+    </div>
+
+    <!-- Chart panel -->
+    <div id="chart-container">
+        <div class="chart-subtitle">NVIDIA vs Tesla — 相对涨跌幅 vs AI 搜索热度 · 2021–2025 · Focus + Context 交互</div>
+        <div id="vis"></div>
+        <div class="loading-overlay" :class="{ hidden: !isLoading }">
+            <div class="spinner"></div>
+            <div class="loading-text">Initializing data streams...</div>
+        </div>
+    </div>
+
+    <!-- Doc panel -->
+    <div id="doc-container">
+
+        <p class="doc-intro">
+            本作品展示自 2021 年以来，<strong>AI 行业热度</strong>与科技巨头股价之间的深度联动关系。
+            拖动底部时间轴可缩放主图，悬停查看精确数值。
+        </p>
+
+        <div class="doc-section accent-blue">
+            <div class="doc-section-title">研究问题</div>
+            <p>生成式 AI（以 ChatGPT 为代表）的爆发，是如何<strong>重塑科技巨头股价走势</strong>的？</p>
+            <p>同为"AI 标签"企业，NVDA（算力基础设施）与 TSLA（端侧应用）在面对 AI 热度浪潮时，是否产生了真实的<strong>相关性与走势分化</strong>？</p>
         </div>
 
-        <div id="doc-container">
-    <h2>项目说明文档</h2>
-    <p>本作品展示了自2021年以来，AI行业热度与科技巨头股价之间的深度联动关系。</p>
-    
-    <h3>1. 研究问题</h3>
-    <p>本项目旨在解答一个核心问题：<strong>生成式AI（以ChatGPT为代表）的爆发，是如何重塑科技巨头股价走势的？</strong></p>
-    <p>具体而言，同为具有强烈“AI标签”的企业，NVIDIA（代表AI算力底层基础设施）与 Tesla（代表AI端侧应用与自动驾驶）的股价，在面对这波“AI行业热度”时，是否产生了真实的相关性与走势分化？</p>
-    
-    <h3>2. 设计决策与替代方案</h3>
-    <ul>
-        <li><strong>特定的可视化编码：</strong>
-            <br>1. 为了消除两只股票绝对价格的巨大差异，我没有使用原始收盘价，而是通过前端计算将其编码为<strong>“相对于起始日的百分比涨跌幅”</strong>，并采用高对比度折线（绿/红）表示。
-            <br>2. 将“AI搜索热度”编码为幽蓝色的<strong>面积图（Area Chart）</strong>并置于最底层。这种编码方式既能传达“行业背景浪潮”的隐喻，又不会喧宾夺主遮挡股价折线。
-        </li>
-        <li><strong>交互技术：</strong>
-            <br>采用了经典的 <strong>Focus + Context（全局刷选+局部放大）</strong> 模式，结合鼠标悬浮的工具提示（Tooltip）。这允许用户在长达五年的时间轴中，精准缩放到特定事件（如财报发布）前后，观察剧烈的市场波动。
-        </li>
-        <li><strong>曾考虑过的替代方案：</strong>
-            <br>最初考虑过使用“分面图（Faceted charts）”，即把 NVDA、TSLA 和 AI热度分成上下三个独立的子图。但最终被否决，因为分离的视图破坏了人眼对时间序列趋势的直接对比能力（相关性直觉）。
-        </li>
-        <li><strong>最终选择的依据：</strong>
-            <br>最终选定了<strong>独立双 Y 轴复合图层（Dual-Axis Layered Chart）</strong>。只有在同一个二维空间内将指标重叠，并加入“0%水平基准线”和“防重叠阶梯式事件垂直线”，才能以最震撼的视觉效果揭示 NVDA 与 AI 热度的“完美拟合”，以及 TSLA 的“逆势背离”。
-        </li>
-    </ul>
+        <div class="doc-section accent-green">
+            <div class="doc-section-title">关键事件</div>
+            <ul class="doc-list">
+                <li><span><strong>2022-09</strong> Tesla AI Day — TSLA 短期拉升</span></li>
+                <li><span><strong>2022-11</strong> ChatGPT 发布 — AI 热度引爆</span></li>
+                <li><span><strong>2023-05</strong> NVDA 财报爆发 — 算力叙事确立</span></li>
+            </ul>
+        </div>
 
-    <h3>3. 外部资源引用</h3>
-    <ul>
-        <li><strong>数据源 1（股票价格）：</strong> Yahoo Finance (雅虎财经)。提取了 NVDA 与 TSLA 过去五年的日线级历史交易数据（CSV 格式）。</li>
-        <li><strong>数据源 2（AI 行业热度）：</strong> Google Trends (谷歌趋势)。提取了过去五年全球范围内对关键词 "ChatGPT" 及 "Generative AI" 的搜索热度指数（0-100）。</li>
-        <li><strong>技术框架：</strong> 本项目网页骨架基于 Vue 3 (CDN)，核心交互式图表完全基于华盛顿大学交互式数据实验室开发的 <strong>Vega-Lite</strong> 语法规范构建，并使用 Vega-Embed 进行渲染。</li>
-    </ul>
+        <div class="doc-section accent-purple">
+            <div class="doc-section-title">设计决策</div>
+            <ul class="doc-list">
+                <li><span>股价编码为<strong>相对涨跌幅 (%)</strong>，消除绝对价差干扰</span></li>
+                <li><span>AI 热度用<strong>面积图</strong>置于底层，传达"背景浪潮"隐喻</span></li>
+                <li><span><strong>双 Y 轴复合图层</strong>替代分面图，保留时序相关性直觉</span></li>
+                <li><span><strong>Focus + Context</strong> 刷选缩放，支持精准事件定位</span></li>
+            </ul>
+        </div>
 
-    <h3>4. 开发流程概述与耗时评估</h3>
-    <p>本项目由单人独立开发完成，总耗时约 <strong>12-14 小时</strong>。整体流程分为数据收集与清洗、可视化基础构建、交互与多视图协调设计、以及UI深度美化四个阶段。</p>
-    <p><strong>耗时最多的环节：</strong></p>
-    <ul>
-        <li><strong>数据清洗与格式统一（约 4 小时）：</strong> 这是最耗时的部分。由于 CSV 文件中的日期带有中文字符（如“下午04:00:00”），导致底层图表库无法识别。最终通过在 Vue 实例中编写正则表达式和字符串切割函数，将所有异构日期强制转换为标准的时间戳才得以解决。</li>
-        <li><strong>多图层联动与防重叠逻辑（约 5 小时）：</strong> 在 Vega-Lite 中实现双 Y 轴并不难，但要让底层面积图、中层折线图、事件基准线，以及“阶梯式错位排列的文字标签”在进行 Context 刷选缩放时能完美保持相对位置且不报错，花费了大量时间调试 `resolve` 和 `scale` 属性。</li>
-        <li><strong>前端网页设计调整（约 3 小时）：</strong> 为贴合 AI 主题，对原始的白底图表进行了深度的 CSS 和 Vega Global Config 覆写，调整了所有坐标轴、网格线的颜色，以达到最佳的视觉信噪比。</li>
-    </ul>
+        <div class="doc-section accent-orange">
+            <div class="doc-section-title">数据来源</div>
+            <ul class="doc-list">
+                <li><span><strong>Yahoo Finance</strong> — NVDA & TSLA 日线历史数据 (CSV)</span></li>
+                <li><span><strong>Google Trends</strong> — "ChatGPT" / "Generative AI" 热度指数 (0–100)</span></li>
+                <li><span><strong>Vega-Lite 5</strong> + Vue 3 + Vega-Embed 6</span></li>
+            </ul>
+        </div>
+
+        <div class="doc-section accent-blue">
+            <div class="doc-section-title">开发耗时</div>
+            <div class="stat-row">
+                <div class="stat-card">
+                    <div class="stat-label">总耗时</div>
+                    <div class="stat-value blue">12–14h</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">数据清洗</div>
+                    <div class="stat-value green">~4h</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">图层联动</div>
+                    <div class="stat-value green">~5h</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">UI 设计</div>
+                    <div class="stat-value green">~3h</div>
+                </div>
+            </div>
+            <p style="margin-top:10px;">最耗时：CSV 日期含中文字符（"下午04:00:00"）导致解析失败，最终用正则强制转换为标准时间戳。</p>
+        </div>
+
+    </div>
 </div>
 
-    <script>
-        const { createApp } = Vue;
-        createApp({
-            data() { return { isLoading: true, chartData: [], trendData: [] } },
-            methods: {
-                parseStockCSV(csvText, symbol) {
-                    const lines = csvText.trim().split(/\r?\n/);
-                    const headers = lines[0].split(',');
-                    const dIdx = headers.indexOf('Date'), cIdx = headers.indexOf('Close');
-                    let data = [];
-                    for(let i = 1; i < lines.length; i++) {
-                        const cols = lines[i].split(',');
-                        if(cols.length > cIdx) {
-                            const dateStr = cols[dIdx].trim().split(' ')[0];
-                            const ts = new Date(dateStr).getTime();
-                            if(!isNaN(ts)) data.push({ Date: ts, Symbol: symbol, Price: parseFloat(cols[cIdx]) });
-                        }
-                    }
-                    data.sort((a,b) => a.Date - b.Date);
-                    const base = data[0].Price;
-                    return data.map(d => ({ ...d, Pct: ((d.Price - base)/base)*100 }));
-                },
-                parseTrendCSV(csvText) {
-                    const lines = csvText.trim().split(/\r?\n/);
-                    let data = [];
-                    for(let i = 1; i < lines.length; i++) {
-                        const cols = lines[i].split(',');
-                        if(cols.length >= 2) {
-                            const ts = new Date(cols[0].trim()).getTime();
-                            if(!isNaN(ts)) data.push({ Date: ts, Heat: parseFloat(cols[1]) });
-                        }
-                    }
-                    return data;
-                },
-                async renderChart() {
-                    try {
-                        this.isLoading = true;
-                        const [resN, resT, resTr] = await Promise.all([
-                            fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
-                        ]);
-                        this.chartData = [...this.parseStockCSV(await resN.text(), 'NVDA'), ...this.parseStockCSV(await resT.text(), 'TSLA')];
-                        this.trendData = this.parseTrendCSV(await resTr.text());
+<script>
+const { createApp } = Vue;
+createApp({
+    data() { return { isLoading: true, chartData: [], trendData: [] } },
+    methods: {
+        parseStockCSV(csvText, symbol) {
+            const lines = csvText.trim().split(/\r?\n/);
+            const headers = lines[0].split(',');
+            const dIdx = headers.indexOf('Date'), cIdx = headers.indexOf('Close');
+            let data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length > cIdx) {
+                    const dateStr = cols[dIdx].trim().split(' ')[0];
+                    const ts = new Date(dateStr).getTime();
+                    if (!isNaN(ts)) data.push({ Date: ts, Symbol: symbol, Price: parseFloat(cols[cIdx]) });
+                }
+            }
+            data.sort((a, b) => a.Date - b.Date);
+            const base = data[0].Price;
+            return data.map(d => ({ ...d, Pct: ((d.Price - base) / base) * 100 }));
+        },
+        parseTrendCSV(csvText) {
+            const lines = csvText.trim().split(/\r?\n/);
+            let data = [];
+            for (let i = 1; i < lines.length; i++) {
+                const cols = lines[i].split(',');
+                if (cols.length >= 2) {
+                    const ts = new Date(cols[0].trim()).getTime();
+                    if (!isNaN(ts)) data.push({ Date: ts, Heat: parseFloat(cols[1]) });
+                }
+            }
+            return data;
+        },
+        async renderChart() {
+            try {
+                this.isLoading = true;
+                const [resN, resT, resTr] = await Promise.all([
+                    fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
+                ]);
+                this.chartData = [
+                    ...this.parseStockCSV(await resN.text(), 'NVDA'),
+                    ...this.parseStockCSV(await resT.text(), 'TSLA')
+                ];
+                this.trendData = this.parseTrendCSV(await resTr.text());
 
-                        const spec = {
-                            "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                            "config": {
-                                "background": "transparent",
-                                "axis": {
-                                    "domainColor": "#334155",
-                                    "gridColor": "#1e293b",
-                                    "tickColor": "#334155",
-                                    "labelColor": "#94a3b8",
-                                    "titleColor": "#cbd5e1",
-                                    "titleFontSize": 14, /* 放大坐标轴标题 */
-                                    "labelFontSize": 12  /* 放大坐标轴刻度数字 */
-                                },
-                                "view": {"stroke": "transparent"},
-                                "legend": {"labelColor": "#e2e8f0", "titleColor": "#38bdf8", "titleFontSize": 14, "labelFontSize": 13}
-                            },
-                            "data": { "values": this.chartData },
-                            "vconcat": [
+                const spec = {
+                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+                    "config": {
+                        "background": "transparent",
+                        "font": "Segoe UI, system-ui, sans-serif",
+                        "axis": {
+                            "domainColor": "#1e2d45",
+                            "gridColor": "#131e30",
+                            "gridDash": [3, 3],
+                            "tickColor": "#1e2d45",
+                            "labelColor": "#64748b",
+                            "titleColor": "#94a3b8",
+                            "titleFontSize": 12,
+                            "labelFontSize": 11,
+                            "titlePadding": 10
+                        },
+                        "view": { "stroke": "transparent" },
+                        "legend": {
+                            "labelColor": "#e2e8f0",
+                            "titleColor": "#38bdf8",
+                            "titleFontSize": 12,
+                            "labelFontSize": 12,
+                            "padding": 8,
+                            "cornerRadius": 6,
+                            "fillColor": "#0d1220",
+                            "strokeColor": "#1e2d45"
+                        },
+                        "line": { "strokeWidth": 2 },
+                        "area": { "opacity": 0.18 }
+                    },
+                    "data": { "values": this.chartData },
+                    "vconcat": [
+                        {
+                            "width": "container",
+                            "height": 420,
+                            "resolve": { "scale": { "y": "independent" } },
+                            "layer": [
                                 {
-                                    "width": "container", "height": 450,
-                                    "resolve": {"scale": {"y": "independent"}},
-                                    "layer": [
-                                        {
-                                            "data": { "values": this.trendData },
-                                            "mark": { "type": "area", "color": "#0ea5e9", "opacity": 0.15, "interpolate": "monotone" },
-                                            "encoding": {
-                                                "x": { "field": "Date", "type": "temporal", "scale": {"domain": {"param": "brush"}}, "axis": {"grid": false} },
-                                                "y": { "field": "Heat", "type": "quantitative", "axis": {"title": "AI 搜索热度 (Search Trend)", "orient": "right", "grid": false} }
-                                            }
-                                        },
-                                        {
-                                            "mark": { "type": "rule", "color": "#64748b", "strokeDash": [2,2] },
-                                            "encoding": { "y": { "datum": 0 } }
-                                        },
-                                        {
-                                            "mark": { "type": "line", "tooltip": true, "strokeWidth": 2.5 },
-                                            "encoding": {
-                                                "x": { "field": "Date", "type": "temporal", "scale": {"domain": {"param": "brush"}} },
-                                                "y": { "field": "Pct", "type": "quantitative", "axis": {"title": "相对涨跌幅 (%)"} },
-                                                "color": { "field": "Symbol", "type": "nominal", "scale": {"range": ["#a3e635", "#fb7185"]} }
-                                            }
-                                        },
-                                        {
-                                            "data": { "values": [ {d: "2022-09-30"}, {d: "2022-11-30"}, {d: "2023-05-24"} ] },
-                                            "mark": { "type": "rule", "color": "#475569", "strokeDash": [4,4] },
-                                            "encoding": { "x": { "field": "d", "type": "temporal", "scale": {"domain": {"param": "brush"}} } }
-                                        },
-                                        {
-                                            "data": { "values": [
-                                                {d: "2022-09-30", t: "Tesla AI Day", y: 25},
-                                                {d: "2022-11-30", t: "▶ ChatGPT发布", y: 55},
-                                                {d: "2023-05-24", t: "▶ NVDA财报爆发", y: 85}
-                                            ] },
-                                            /* 放大图表内的事件标注文字，从12放大到14 */
-                                            "mark": { "type": "text", "align": "left", "dx": 8, "fontWeight": "bold", "fontSize": 14, "color": "#e2e8f0" },
-                                            "encoding": {
-                                                "x": { "field": "d", "type": "temporal", "scale": {"domain": {"param": "brush"}} },
-                                                "y": { "field": "y", "type": "quantitative", "scale": null },
-                                                "text": { "field": "t" }
-                                            }
-                                        }
-                                    ]
-                                },
-                                {
-                                    "width": "container", "height": 60,
-                                    "mark": { "type": "line", "strokeWidth": 1.5 },
-                                    "params": [{ "name": "brush", "select": {"type": "interval", "encodings": ["x"]} }],
+                                    "data": { "values": this.trendData },
+                                    "mark": { "type": "area", "color": "#0ea5e9", "interpolate": "monotone", "line": { "color": "#0ea5e9", "strokeWidth": 1, "opacity": 0.4 } },
                                     "encoding": {
-                                        "x": { "field": "Date", "type": "temporal", "axis": {"title": "全局时间轴 (Global Timeline)"} },
-                                        "y": { "field": "Pct", "type": "quantitative", "axis": null },
-                                        "color": { "field": "Symbol", "type": "nominal", "legend": null, "scale": {"range": ["#a3e635", "#fb7185"]} }
+                                        "x": { "field": "Date", "type": "temporal", "scale": { "domain": { "param": "brush" } }, "axis": { "grid": false } },
+                                        "y": { "field": "Heat", "type": "quantitative", "axis": { "title": "AI 搜索热度", "orient": "right", "grid": false, "labelColor": "#0ea5e9", "titleColor": "#0ea5e9" } }
+                                    }
+                                },
+                                {
+                                    "mark": { "type": "rule", "color": "#334155", "strokeDash": [4, 4], "strokeWidth": 1 },
+                                    "encoding": { "y": { "datum": 0 } }
+                                },
+                                {
+                                    "mark": { "type": "line", "interpolate": "monotone", "strokeWidth": 2.5 },
+                                    "encoding": {
+                                        "x": { "field": "Date", "type": "temporal", "scale": { "domain": { "param": "brush" } } },
+                                        "y": { "field": "Pct", "type": "quantitative", "axis": { "title": "相对涨跌幅 (%)", "format": "+.0f", "labelExpr": "datum.value + '%'" } },
+                                        "color": {
+                                            "field": "Symbol", "type": "nominal",
+                                            "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] },
+                                            "legend": { "title": "股票代码" }
+                                        },
+                                        "tooltip": [
+                                            { "field": "Date", "type": "temporal", "title": "日期", "format": "%Y-%m-%d" },
+                                            { "field": "Symbol", "title": "代码" },
+                                            { "field": "Pct", "title": "涨跌幅", "format": "+.2f" },
+                                            { "field": "Price", "title": "收盘价", "format": ".2f" }
+                                        ]
+                                    }
+                                },
+                                {
+                                    "data": { "values": [{ "d": "2022-09-30" }, { "d": "2022-11-30" }, { "d": "2023-05-24" }] },
+                                    "mark": { "type": "rule", "color": "#334155", "strokeDash": [5, 5], "strokeWidth": 1 },
+                                    "encoding": { "x": { "field": "d", "type": "temporal", "scale": { "domain": { "param": "brush" } } } }
+                                },
+                                {
+                                    "data": { "values": [
+                                        { "d": "2022-09-30", "t": "Tesla AI Day", "y": 20 },
+                                        { "d": "2022-11-30", "t": "ChatGPT 发布", "y": 55 },
+                                        { "d": "2023-05-24", "t": "NVDA 财报爆发", "y": 90 }
+                                    ]},
+                                    "mark": { "type": "text", "align": "left", "dx": 8, "fontWeight": "bold", "fontSize": 12, "color": "#94a3b8" },
+                                    "encoding": {
+                                        "x": { "field": "d", "type": "temporal", "scale": { "domain": { "param": "brush" } } },
+                                        "y": { "field": "y", "type": "quantitative", "scale": null },
+                                        "text": { "field": "t" }
                                     }
                                 }
                             ]
-                        };
-                        vegaEmbed('#vis', spec, {actions: false});
-                        this.isLoading = false;
-                    } catch (e) { console.error(e); this.isLoading = false; }
-                }
-            },
-            mounted() { this.renderChart(); }
-        }).mount('#app')
-    </script>
+                        },
+                        {
+                            "width": "container",
+                            "height": 55,
+                            "mark": { "type": "line", "strokeWidth": 1.5, "interpolate": "monotone" },
+                            "params": [{ "name": "brush", "select": { "type": "interval", "encodings": ["x"] } }],
+                            "encoding": {
+                                "x": { "field": "Date", "type": "temporal", "axis": { "title": "全局时间轴 — 拖动选择范围", "titleColor": "#475569", "labelColor": "#475569" } },
+                                "y": { "field": "Pct", "type": "quantitative", "axis": null },
+                                "color": { "field": "Symbol", "type": "nominal", "legend": null, "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] } }
+                            }
+                        }
+                    ]
+                };
+
+                vegaEmbed('#vis', spec, {
+                    actions: false,
+                    renderer: 'svg',
+                    tooltip: { theme: 'dark' }
+                });
+                this.isLoading = false;
+            } catch (e) {
+                console.error(e);
+                this.isLoading = false;
+            }
+        }
+    },
+    mounted() { this.renderChart(); }
+}).mount('#app');
+</script>
 </body>
 </html>
