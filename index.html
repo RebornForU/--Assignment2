@@ -377,7 +377,7 @@
         <button class="theme-btn" @click="toggleTheme" :title="isDark ? '切换到亮色主题' : '切换到暗色主题'">
             {{ isDark ? '☀️' : '🌙' }}
         </button>
-        <button class="sync-btn" @click="renderChart" :disabled="isLoading">
+        <button class="sync-btn" @click="syncData" :disabled="isLoading">
             {{ isLoading ? 'LOADING...' : '⟳ SYNC DATA' }}
         </button>
     </div>
@@ -499,7 +499,10 @@ const KEY_EVENTS = {
     '2023-05-24': 'NVDA 财报爆发'
 };
 
-/* Format a timestamp (ms) to YYYY-MM-DD */
+/* Named dataset keys used by the Vega changeset API */
+const DS_STOCK = 'stock_data';
+const DS_TREND = 'trend_data';
+
 function fmtDate(ts) {
     const d = new Date(ts);
     const y = d.getFullYear();
@@ -508,6 +511,185 @@ function fmtDate(ts) {
     return `${y}-${m}-${day}`;
 }
 
+/* ─────────────────────────────────────────────────────────────
+   Feature 1 (modularized): Vega-Lite spec factory
+   Accepts CSS theme vars; data is loaded via named datasets so
+   the spec itself never needs to be rebuilt on re-sync.
+───────────────────────────────────────────────────────────── */
+function buildSpec(v) {
+    return {
+        "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
+        "config": {
+            "background": "transparent",
+            "font": "Segoe UI, system-ui, sans-serif",
+            "axis": {
+                "domainColor": v('--vega-domain'),
+                "gridColor":   v('--vega-grid'),
+                "gridDash": [3, 3],
+                "tickColor":   v('--vega-domain'),
+                "labelColor":  v('--vega-axis-label'),
+                "titleColor":  v('--vega-axis-title'),
+                "titleFontSize": 12,
+                "labelFontSize": 11,
+                "titlePadding": 10
+            },
+            "view": { "stroke": "transparent" },
+            "legend": {
+                "labelColor":  v('--text-hi'),
+                "titleColor":  v('--accent'),
+                "titleFontSize": 12,
+                "labelFontSize": 12,
+                "padding": 8,
+                "cornerRadius": 6,
+                "fillColor":   v('--vega-legend-fill'),
+                "strokeColor": v('--vega-legend-stroke')
+            },
+            "line": { "strokeWidth": 2 },
+            "area": { "opacity": 0.18 }
+        },
+        /* top-level named dataset — updated via changeset on re-sync */
+        "data": { "name": DS_STOCK },
+        "vconcat": [
+            {
+                "width": "container",
+                "height": 420,
+                "resolve": { "scale": { "y": "independent" } },
+                "layer": [
+                    {
+                        "data": { "name": DS_TREND },
+                        "mark": { "type": "area", "color": "#0ea5e9", "interpolate": "monotone",
+                                  "line": { "color": "#0ea5e9", "strokeWidth": 1, "opacity": 0.4 } },
+                        "encoding": {
+                            "x": { "field": "Date", "type": "temporal",
+                                   "scale": { "domain": { "param": "brush" } }, "axis": { "grid": false } },
+                            "y": { "field": "Heat", "type": "quantitative",
+                                   "axis": { "title": "AI 搜索热度", "orient": "right", "grid": false,
+                                             "labelColor": "#0ea5e9", "titleColor": "#0ea5e9" } }
+                        }
+                    },
+                    {
+                        "mark": { "type": "rule", "color": "#334155", "strokeDash": [4, 4], "strokeWidth": 1 },
+                        "encoding": { "y": { "datum": 0 } }
+                    },
+                    {
+                        "mark": { "type": "line", "interpolate": "monotone", "strokeWidth": 2.5 },
+                        "encoding": {
+                            "x": { "field": "Date", "type": "temporal",
+                                   "scale": { "domain": { "param": "brush" } } },
+                            "y": { "field": "Pct", "type": "quantitative",
+                                   "axis": { "title": "相对涨跌幅 (%)", "format": "+.0f",
+                                             "labelExpr": "datum.value + '%'" } },
+                            "color": {
+                                "field": "Symbol", "type": "nominal",
+                                "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] },
+                                "legend": { "title": "股票代码" }
+                            },
+                            "tooltip": [
+                                { "field": "Date",   "type": "temporal", "title": "日期",   "format": "%Y-%m-%d" },
+                                { "field": "Symbol", "title": "代码" },
+                                { "field": "Pct",    "title": "涨跌幅",  "format": "+.2f" },
+                                { "field": "Price",  "title": "收盘价",  "format": ".2f" },
+                                { "field": "event",  "title": "📌 关键事件" }
+                            ]
+                        }
+                    },
+                    {
+                        "data": { "values": [{ "d": "2022-09-30" }, { "d": "2022-11-30" }, { "d": "2023-05-24" }] },
+                        "mark": { "type": "rule", "color": "#334155", "strokeDash": [5, 5], "strokeWidth": 1 },
+                        "encoding": { "x": { "field": "d", "type": "temporal",
+                                             "scale": { "domain": { "param": "brush" } } } }
+                    },
+                    {
+                        "data": { "values": [
+                            { "d": "2022-09-30", "t": "Tesla AI Day",  "y": 20 },
+                            { "d": "2022-11-30", "t": "ChatGPT 发布",  "y": 55 },
+                            { "d": "2023-05-24", "t": "NVDA 财报爆发", "y": 90 }
+                        ]},
+                        "mark": { "type": "text", "align": "left", "dx": 8,
+                                  "fontWeight": "bold", "fontSize": 12, "color": "#94a3b8" },
+                        "encoding": {
+                            "x": { "field": "d", "type": "temporal",
+                                   "scale": { "domain": { "param": "brush" } } },
+                            "y": { "field": "y", "type": "quantitative", "scale": null },
+                            "text": { "field": "t" }
+                        }
+                    }
+                ]
+            },
+            {
+                "width": "container",
+                "height": 55,
+                "mark": { "type": "line", "strokeWidth": 1.5, "interpolate": "monotone" },
+                "params": [{ "name": "brush", "select": { "type": "interval", "encodings": ["x"] } }],
+                "encoding": {
+                    "x": { "field": "Date", "type": "temporal",
+                           "axis": { "title": "全局时间轴 — 拖动选择范围",
+                                     "titleColor": "#475569", "labelColor": "#475569" } },
+                    "y": { "field": "Pct", "type": "quantitative", "axis": null },
+                    "color": { "field": "Symbol", "type": "nominal", "legend": null,
+                               "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] } }
+                }
+            }
+        ]
+    };
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Feature 2 (modularized): robust CSV parsers
+───────────────────────────────────────────────────────────── */
+
+/* Extracts YYYY-MM-DD from any date string, including ones with
+   Chinese locale suffixes like "2023-05-24 下午04:00:00". */
+function extractDateStr(raw) {
+    const m = raw.trim().match(/(\d{4}-\d{2}-\d{2})/);
+    return m ? m[1] : null;
+}
+
+function parseStockCSV(csvText, symbol) {
+    const lines = csvText.trim().split(/\r?\n/);
+    const headers = lines[0].split(',');
+    const dIdx = headers.indexOf('Date');
+    const cIdx = headers.indexOf('Close');
+    if (dIdx === -1 || cIdx === -1) return [];
+
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length <= cIdx) continue;
+        const dateStr = extractDateStr(cols[dIdx]);
+        if (!dateStr) continue;
+        const ts = new Date(dateStr).getTime();
+        const price = parseFloat(cols[cIdx]);
+        if (!isNaN(ts) && !isNaN(price)) data.push({ Date: ts, Symbol: symbol, Price: price });
+    }
+    if (data.length === 0) return [];
+    data.sort((a, b) => a.Date - b.Date);
+    const base = data[0].Price;
+    return data.map(d => ({
+        ...d,
+        Pct: ((d.Price - base) / base) * 100,
+        event: KEY_EVENTS[fmtDate(d.Date)] || null
+    }));
+}
+
+function parseTrendCSV(csvText) {
+    const lines = csvText.trim().split(/\r?\n/);
+    const data = [];
+    for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(',');
+        if (cols.length < 2) continue;
+        const dateStr = extractDateStr(cols[0]);
+        if (!dateStr) continue;
+        const ts = new Date(dateStr).getTime();
+        const heat = parseFloat(cols[1]);
+        if (!isNaN(ts) && !isNaN(heat)) data.push({ Date: ts, Heat: heat });
+    }
+    return data;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Vue app
+───────────────────────────────────────────────────────────── */
 createApp({
     data() {
         return {
@@ -515,7 +697,6 @@ createApp({
             isDark: true,
             chartData: [],
             trendData: [],
-            /* brush state */
             brushActive: false,
             brushStartLabel: '',
             brushEndLabel: '',
@@ -523,48 +704,18 @@ createApp({
             brushTslaPct: null,
             brushNvdaStart: null,
             brushTslaStart: null,
-            _vegaView: null
+            chartView: null   /* single persistent Vega view instance */
         };
     },
     methods: {
         toggleTheme() {
             this.isDark = !this.isDark;
             document.documentElement.setAttribute('data-theme', this.isDark ? 'dark' : 'light');
-            this.renderChart();
+            /* Theme changes axis colors which are baked into the spec config,
+               so we must re-embed. Data is preserved via the same fetch path. */
+            this.initChart();
         },
 
-        parseStockCSV(csvText, symbol) {
-            const lines = csvText.trim().split(/\r?\n/);
-            const headers = lines[0].split(',');
-            const dIdx = headers.indexOf('Date'), cIdx = headers.indexOf('Close');
-            let data = [];
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(',');
-                if (cols.length > cIdx) {
-                    const dateStr = cols[dIdx].trim().split(' ')[0];
-                    const ts = new Date(dateStr).getTime();
-                    if (!isNaN(ts)) data.push({ Date: ts, Symbol: symbol, Price: parseFloat(cols[cIdx]) });
-                }
-            }
-            data.sort((a, b) => a.Date - b.Date);
-            const base = data[0].Price;
-            return data.map(d => ({ ...d, Pct: ((d.Price - base) / base) * 100 }));
-        },
-
-        parseTrendCSV(csvText) {
-            const lines = csvText.trim().split(/\r?\n/);
-            let data = [];
-            for (let i = 1; i < lines.length; i++) {
-                const cols = lines[i].split(',');
-                if (cols.length >= 2) {
-                    const ts = new Date(cols[0].trim()).getTime();
-                    if (!isNaN(ts)) data.push({ Date: ts, Heat: parseFloat(cols[1]) });
-                }
-            }
-            return data;
-        },
-
-        /* ── Feature 1: compute brush-range metrics ── */
         onBrush(name, value) {
             if (!value || !value.Date || value.Date.length < 2) {
                 this.brushActive = false;
@@ -589,146 +740,29 @@ createApp({
             } else { this.brushTslaStart = null; this.brushTslaPct = null; }
         },
 
-        async renderChart() {
+        async fetchData() {
+            const [resN, resT, resTr] = await Promise.all([
+                fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
+            ]);
+            this.chartData = [
+                ...parseStockCSV(await resN.text(), 'NVDA'),
+                ...parseStockCSV(await resT.text(), 'TSLA')
+            ];
+            this.trendData = parseTrendCSV(await resTr.text());
+        },
+
+        /* Feature 3: called once from mounted() — creates the Vega view */
+        async initChart() {
             try {
                 this.isLoading = true;
                 this.brushActive = false;
-                if (this._vegaView) { this._vegaView.finalize(); this._vegaView = null; }
+                if (this.chartView) { this.chartView.finalize(); this.chartView = null; }
 
-                const [resN, resT, resTr] = await Promise.all([
-                    fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
-                ]);
-                this.chartData = [
-                    ...this.parseStockCSV(await resN.text(), 'NVDA'),
-                    ...this.parseStockCSV(await resT.text(), 'TSLA')
-                ];
-                this.trendData = this.parseTrendCSV(await resTr.text());
+                await this.fetchData();
 
                 const css = getComputedStyle(document.documentElement);
                 const v = (name) => css.getPropertyValue(name).trim();
-
-                /* ── Feature 2: enrich chartData with event annotation ── */
-                const enriched = this.chartData.map(d => ({
-                    ...d,
-                    event: KEY_EVENTS[fmtDate(d.Date)] || null
-                }));
-
-                const spec = {
-                    "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
-                    "config": {
-                        "background": "transparent",
-                        "font": "Segoe UI, system-ui, sans-serif",
-                        "axis": {
-                            "domainColor": v('--vega-domain'),
-                            "gridColor":   v('--vega-grid'),
-                            "gridDash": [3, 3],
-                            "tickColor":   v('--vega-domain'),
-                            "labelColor":  v('--vega-axis-label'),
-                            "titleColor":  v('--vega-axis-title'),
-                            "titleFontSize": 12,
-                            "labelFontSize": 11,
-                            "titlePadding": 10
-                        },
-                        "view": { "stroke": "transparent" },
-                        "legend": {
-                            "labelColor":  v('--text-hi'),
-                            "titleColor":  v('--accent'),
-                            "titleFontSize": 12,
-                            "labelFontSize": 12,
-                            "padding": 8,
-                            "cornerRadius": 6,
-                            "fillColor":   v('--vega-legend-fill'),
-                            "strokeColor": v('--vega-legend-stroke')
-                        },
-                        "line": { "strokeWidth": 2 },
-                        "area": { "opacity": 0.18 }
-                    },
-                    "data": { "values": enriched },
-                    "vconcat": [
-                        {
-                            "width": "container",
-                            "height": 420,
-                            "resolve": { "scale": { "y": "independent" } },
-                            "layer": [
-                                {
-                                    "data": { "values": this.trendData },
-                                    "mark": { "type": "area", "color": "#0ea5e9", "interpolate": "monotone", "line": { "color": "#0ea5e9", "strokeWidth": 1, "opacity": 0.4 } },
-                                    "encoding": {
-                                        "x": { "field": "Date", "type": "temporal", "scale": { "domain": { "param": "brush" } }, "axis": { "grid": false } },
-                                        "y": { "field": "Heat", "type": "quantitative", "axis": { "title": "AI 搜索热度", "orient": "right", "grid": false, "labelColor": "#0ea5e9", "titleColor": "#0ea5e9" } }
-                                    }
-                                },
-                                {
-                                    "mark": { "type": "rule", "color": "#334155", "strokeDash": [4, 4], "strokeWidth": 1 },
-                                    "encoding": { "y": { "datum": 0 } }
-                                },
-                                {
-                                    "mark": { "type": "line", "interpolate": "monotone", "strokeWidth": 2.5 },
-                                    "encoding": {
-                                        "x": { "field": "Date", "type": "temporal", "scale": { "domain": { "param": "brush" } } },
-                                        "y": { "field": "Pct", "type": "quantitative", "axis": { "title": "相对涨跌幅 (%)", "format": "+.0f", "labelExpr": "datum.value + '%'" } },
-                                        "color": {
-                                            "field": "Symbol", "type": "nominal",
-                                            "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] },
-                                            "legend": { "title": "股票代码" }
-                                        },
-                                        "tooltip": [
-                                            { "field": "Date",   "type": "temporal",    "title": "日期",   "format": "%Y-%m-%d" },
-                                            { "field": "Symbol", "title": "代码" },
-                                            { "field": "Pct",    "title": "涨跌幅",     "format": "+.2f" },
-                                            { "field": "Price",  "title": "收盘价",     "format": ".2f" },
-                                            { "field": "event",  "title": "📌 关键事件" }
-                                        ]
-                                    }
-                                },
-                                {
-                                    "data": { "values": [{ "d": "2022-09-30" }, { "d": "2022-11-30" }, { "d": "2023-05-24" }] },
-                                    "mark": { "type": "rule", "color": "#334155", "strokeDash": [5, 5], "strokeWidth": 1 },
-                                    "encoding": { "x": { "field": "d", "type": "temporal", "scale": { "domain": { "param": "brush" } } } }
-                                },
-                                {
-                                    "data": { "values": [
-                                        { "d": "2022-09-30", "t": "Tesla AI Day",    "y": 20 },
-                                        { "d": "2022-11-30", "t": "ChatGPT 发布",    "y": 55 },
-                                        { "d": "2023-05-24", "t": "NVDA 财报爆发",   "y": 90 }
-                                    ]},
-                                    "mark": { "type": "text", "align": "left", "dx": 8, "fontWeight": "bold", "fontSize": 12, "color": "#94a3b8" },
-                                    "encoding": {
-                                        "x": { "field": "d", "type": "temporal", "scale": { "domain": { "param": "brush" } } },
-                                        "y": { "field": "y", "type": "quantitative", "scale": null },
-                                        "text": { "field": "t" }
-                                    }
-                                }
-                            ]
-                        },
-                        {
-                            "width": "container",
-                            "height": 55,
-                            "mark": { "type": "line", "strokeWidth": 1.5, "interpolate": "monotone" },
-                            "params": [{ "name": "brush", "select": { "type": "interval", "encodings": ["x"] } }],
-                            "encoding": {
-                                "x": { "field": "Date", "type": "temporal", "axis": { "title": "全局时间轴 — 拖动选择范围", "titleColor": "#475569", "labelColor": "#475569" } },
-                                "y": { "field": "Pct", "type": "quantitative", "axis": null },
-                                "color": { "field": "Symbol", "type": "nominal", "legend": null, "scale": { "domain": ["NVDA", "TSLA"], "range": ["#a3e635", "#fb7185"] } }
-                            }
-                        }
-                    ]
-                };
-
-                /* ── Feature 2: custom tooltip handler ── */
-                const tooltipHandler = (handler, event, item, value) => {
-                    if (!value) {
-                        handler.call(this, event, item, value);
-                        return;
-                    }
-                    /* Inject event label into tooltip value object */
-                    const dateKey = value['日期'] || (item && item.datum && fmtDate(item.datum.Date));
-                    const eventLabel = dateKey ? KEY_EVENTS[dateKey] : null;
-                    const enrichedValue = eventLabel
-                        ? { ...value, '📌 关键事件': eventLabel }
-                        : value;
-                    handler.call(this, event, item, enrichedValue);
-                };
+                const spec = buildSpec(v);
 
                 const result = await vegaEmbed('#vis', spec, {
                     actions: false,
@@ -736,21 +770,44 @@ createApp({
                     tooltip: { theme: this.isDark ? 'dark' : 'custom' }
                 });
 
-                this._vegaView = result.view;
+                this.chartView = result.view;
 
-                /* ── Feature 1: listen to brush signal ── */
-                result.view.addSignalListener('brush', (name, value) => {
-                    this.onBrush(name, value);
-                });
+                /* Populate named datasets with initial data */
+                await this.chartView
+                    .change(DS_STOCK, vega.changeset().remove(vega.truthy).insert(this.chartData))
+                    .change(DS_TREND, vega.changeset().remove(vega.truthy).insert(this.trendData))
+                    .runAsync();
+
+                this.chartView.addSignalListener('brush', (name, value) => this.onBrush(name, value));
+                this.isLoading = false;
+            } catch (e) {
+                console.error('initChart error:', e);
+                this.isLoading = false;
+            }
+        },
+
+        /* Feature 3: called by SYNC button — updates data without re-embedding */
+        async syncData() {
+            if (!this.chartView) { return this.initChart(); }
+            try {
+                this.isLoading = true;
+                this.brushActive = false;
+
+                await this.fetchData();
+
+                await this.chartView
+                    .change(DS_STOCK, vega.changeset().remove(vega.truthy).insert(this.chartData))
+                    .change(DS_TREND, vega.changeset().remove(vega.truthy).insert(this.trendData))
+                    .runAsync();
 
                 this.isLoading = false;
             } catch (e) {
-                console.error(e);
+                console.error('syncData error:', e);
                 this.isLoading = false;
             }
         }
     },
-    mounted() { this.renderChart(); }
+    mounted() { this.initChart(); }
 }).mount('#app');
 </script>
 </body>
