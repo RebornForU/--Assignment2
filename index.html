@@ -10,6 +10,7 @@
     <style>
         *, *::before, *::after { box-sizing: border-box; }
 
+        /* ── Dark theme (default) ── */
         :root {
             --bg-deep:    #070b14;
             --bg-panel:   #0d1220;
@@ -25,6 +26,40 @@
             --text-lo:    #475569;
             --glow-blue:  0 0 18px rgba(56,189,248,0.25);
             --glow-green: 0 0 12px rgba(163,230,53,0.3);
+            --header-bg:  linear-gradient(90deg, #0d1220 0%, #0f1929 60%, #0d1220 100%);
+            --vega-bg:    transparent;
+            --vega-axis-label: #64748b;
+            --vega-axis-title: #94a3b8;
+            --vega-grid:  #131e30;
+            --vega-domain: #1e2d45;
+            --vega-legend-fill: #0d1220;
+            --vega-legend-stroke: #1e2d45;
+        }
+
+        /* ── Light theme ── */
+        [data-theme="light"] {
+            --bg-deep:    #f0f4f8;
+            --bg-panel:   #ffffff;
+            --bg-card:    #f8fafc;
+            --bg-card2:   #eef2f7;
+            --border:     #cbd5e1;
+            --accent:     #0284c7;
+            --accent-dim: rgba(2,132,199,0.1);
+            --green:      #4d7c0f;
+            --red:        #be123c;
+            --text-hi:    #0f172a;
+            --text-mid:   #475569;
+            --text-lo:    #94a3b8;
+            --glow-blue:  0 0 18px rgba(2,132,199,0.2);
+            --glow-green: 0 0 12px rgba(77,124,15,0.2);
+            --header-bg:  linear-gradient(90deg, #ffffff 0%, #f0f9ff 60%, #ffffff 100%);
+            --vega-bg:    transparent;
+            --vega-axis-label: #64748b;
+            --vega-axis-title: #334155;
+            --vega-grid:  #e2e8f0;
+            --vega-domain: #cbd5e1;
+            --vega-legend-fill: #ffffff;
+            --vega-legend-stroke: #cbd5e1;
         }
 
         html, body {
@@ -52,7 +87,7 @@
             gap: 16px;
             padding: 0 32px;
             height: 58px;
-            background: linear-gradient(90deg, #0d1220 0%, #0f1929 60%, #0d1220 100%);
+            background: var(--header-bg);
             border-bottom: 1px solid var(--border);
             box-shadow: 0 2px 20px rgba(0,0,0,0.5);
             position: relative;
@@ -308,6 +343,90 @@
             border-radius: 8px;
         }
         .doc-intro strong { color: var(--accent); }
+
+        /* ── Theme toggle button ── */
+        .theme-btn {
+            padding: 7px 14px;
+            background: transparent;
+            color: var(--text-mid);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            transition: all 0.25s;
+            white-space: nowrap;
+        }
+        .theme-btn:hover {
+            color: var(--accent);
+            border-color: var(--accent);
+            box-shadow: var(--glow-blue);
+        }
+
+        /* ── Stat-card hover enhancement ── */
+        .stat-card {
+            background: linear-gradient(135deg, var(--bg-card2) 0%, var(--bg-card) 100%);
+            border: 1px solid var(--border);
+            border-radius: 7px;
+            padding: 10px 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: default;
+        }
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 1px var(--accent);
+        }
+
+        /* ── Responsive: single-column on narrow screens ── */
+        @media (max-width: 900px) {
+            html, body { overflow: auto; }
+
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto auto 1fr auto;
+                height: auto;
+                min-height: 100vh;
+            }
+
+            #header {
+                grid-column: 1;
+                grid-row: 1;
+                padding: 0 16px;
+                gap: 10px;
+                flex-wrap: wrap;
+                height: auto;
+                min-height: 52px;
+                padding-top: 8px;
+                padding-bottom: 8px;
+            }
+
+            .header-title { font-size: 14px; }
+
+            #chart-container {
+                grid-column: 1;
+                grid-row: 2;
+                min-height: 480px;
+                height: 480px;
+                padding: 14px 16px 12px;
+                overflow: hidden;
+            }
+
+            #doc-container {
+                grid-column: 1;
+                grid-row: 3;
+                border-left: none;
+                border-top: 1px solid var(--border);
+                overflow-y: visible;
+                padding: 16px 16px 32px;
+            }
+
+            .stat-row { grid-template-columns: 1fr 1fr; }
+        }
+
+        @media (max-width: 560px) {
+            .header-badges { display: none; }
+            .stat-row { grid-template-columns: 1fr 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -322,6 +441,9 @@
             <span class="badge badge-nvda"><span class="badge-dot"></span>NVDA</span>
             <span class="badge badge-tsla"><span class="badge-dot"></span>TSLA</span>
         </div>
+        <button class="theme-btn" @click="toggleTheme" :title="isDark ? '切换到亮色主题' : '切换到暗色主题'">
+            {{ isDark ? '☀️' : '🌙' }}
+        </button>
         <button class="sync-btn" @click="renderChart" :disabled="isLoading">
             {{ isLoading ? 'LOADING...' : '⟳ SYNC DATA' }}
         </button>
@@ -408,8 +530,13 @@
 <script>
 const { createApp } = Vue;
 createApp({
-    data() { return { isLoading: true, chartData: [], trendData: [] } },
+    data() { return { isLoading: true, isDark: true, chartData: [], trendData: [] } },
     methods: {
+        toggleTheme() {
+            this.isDark = !this.isDark;
+            document.documentElement.setAttribute('data-theme', this.isDark ? 'dark' : 'light');
+            this.renderChart();
+        },
         parseStockCSV(csvText, symbol) {
             const lines = csvText.trim().split(/\r?\n/);
             const headers = lines[0].split(',');
@@ -451,32 +578,35 @@ createApp({
                 ];
                 this.trendData = this.parseTrendCSV(await resTr.text());
 
+                const css = getComputedStyle(document.documentElement);
+                const v = (name) => css.getPropertyValue(name).trim();
+
                 const spec = {
                     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
                     "config": {
                         "background": "transparent",
                         "font": "Segoe UI, system-ui, sans-serif",
                         "axis": {
-                            "domainColor": "#1e2d45",
-                            "gridColor": "#131e30",
+                            "domainColor": v('--vega-domain'),
+                            "gridColor":   v('--vega-grid'),
                             "gridDash": [3, 3],
-                            "tickColor": "#1e2d45",
-                            "labelColor": "#64748b",
-                            "titleColor": "#94a3b8",
+                            "tickColor":   v('--vega-domain'),
+                            "labelColor":  v('--vega-axis-label'),
+                            "titleColor":  v('--vega-axis-title'),
                             "titleFontSize": 12,
                             "labelFontSize": 11,
                             "titlePadding": 10
                         },
                         "view": { "stroke": "transparent" },
                         "legend": {
-                            "labelColor": "#e2e8f0",
-                            "titleColor": "#38bdf8",
+                            "labelColor":  v('--text-hi'),
+                            "titleColor":  v('--accent'),
                             "titleFontSize": 12,
                             "labelFontSize": 12,
                             "padding": 8,
                             "cornerRadius": 6,
-                            "fillColor": "#0d1220",
-                            "strokeColor": "#1e2d45"
+                            "fillColor":   v('--vega-legend-fill'),
+                            "strokeColor": v('--vega-legend-stroke')
                         },
                         "line": { "strokeWidth": 2 },
                         "area": { "opacity": 0.18 }
