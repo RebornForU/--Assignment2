@@ -7,6 +7,7 @@
     <script src="https://cdn.jsdelivr.net/npm/vega@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-lite@5"></script>
     <script src="https://cdn.jsdelivr.net/npm/vega-embed@6"></script>
+    <script src="https://cdn.jsdelivr.net/npm/vega-tooltip@0.34"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; }
 
@@ -34,6 +35,8 @@
             --vega-domain: #1e2d45;
             --vega-legend-fill: #0d1220;
             --vega-legend-stroke: #1e2d45;
+            --skeleton-base: #111827;
+            --skeleton-shine: #1e2d45;
         }
 
         /* ── Light theme ── */
@@ -60,6 +63,8 @@
             --vega-domain: #cbd5e1;
             --vega-legend-fill: #ffffff;
             --vega-legend-stroke: #cbd5e1;
+            --skeleton-base: #e2e8f0;
+            --skeleton-shine: #f8fafc;
         }
 
         html, body {
@@ -107,14 +112,8 @@
             letter-spacing: 0.5px;
             flex: 1;
         }
-        .header-title span {
-            color: var(--accent);
-        }
-        .header-badges {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
+        .header-title span { color: var(--accent); }
+        .header-badges { display: flex; gap: 8px; align-items: center; }
         .badge {
             display: inline-flex;
             align-items: center;
@@ -125,21 +124,10 @@
             font-weight: 700;
             letter-spacing: 0.5px;
         }
-        .badge-dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-        }
-        .badge-nvda {
-            background: rgba(163,230,53,0.1);
-            color: var(--green);
-            border: 1px solid rgba(163,230,53,0.35);
-        }
+        .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .badge-nvda { background: rgba(163,230,53,0.1); color: var(--green); border: 1px solid rgba(163,230,53,0.35); }
         .badge-nvda .badge-dot { background: var(--green); box-shadow: var(--glow-green); }
-        .badge-tsla {
-            background: rgba(251,113,133,0.1);
-            color: var(--red);
-            border: 1px solid rgba(251,113,133,0.35);
-        }
+        .badge-tsla { background: rgba(251,113,133,0.1); color: var(--red); border: 1px solid rgba(251,113,133,0.35); }
         .badge-tsla .badge-dot { background: var(--red); box-shadow: 0 0 8px rgba(251,113,133,0.4); }
 
         .sync-btn {
@@ -156,17 +144,8 @@
             box-shadow: var(--glow-blue);
             white-space: nowrap;
         }
-        .sync-btn:hover {
-            background: rgba(56,189,248,0.2);
-            box-shadow: 0 0 24px rgba(56,189,248,0.4);
-        }
-        .sync-btn:disabled {
-            color: var(--text-lo);
-            border-color: var(--text-lo);
-            box-shadow: none;
-            cursor: not-allowed;
-            background: transparent;
-        }
+        .sync-btn:hover { background: rgba(56,189,248,0.2); box-shadow: 0 0 24px rgba(56,189,248,0.4); }
+        .sync-btn:disabled { color: var(--text-lo); border-color: var(--text-lo); box-shadow: none; cursor: not-allowed; background: transparent; }
 
         /* ── Chart panel ── */
         #chart-container {
@@ -179,7 +158,6 @@
             overflow: hidden;
             position: relative;
         }
-
         .chart-subtitle {
             font-size: 12px;
             color: var(--text-lo);
@@ -187,41 +165,47 @@
             margin-bottom: 12px;
             text-transform: uppercase;
         }
+        #vis { flex: 1; width: 100%; min-height: 0; }
 
-        #vis {
-            flex: 1;
-            width: 100%;
-            min-height: 0;
+        /* ── Skeleton Screen Loading ── */
+        @keyframes shimmer {
+            0%   { background-position: -600px 0; }
+            100% { background-position:  600px 0; }
         }
-
-        /* Loading overlay */
+        .skeleton-block {
+            border-radius: 8px;
+            background: linear-gradient(
+                90deg,
+                var(--skeleton-base) 25%,
+                var(--skeleton-shine) 50%,
+                var(--skeleton-base) 75%
+            );
+            background-size: 1200px 100%;
+            animation: shimmer 1.6s ease-in-out infinite;
+        }
         .loading-overlay {
             position: absolute;
             inset: 0;
-            background: rgba(7,11,20,0.85);
+            background: var(--bg-panel);
             display: flex;
             flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
+            align-items: stretch;
+            justify-content: flex-start;
+            padding: 44px 28px 16px;
+            gap: 10px;
             z-index: 10;
-            backdrop-filter: blur(4px);
             transition: opacity 0.4s;
         }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
-        .spinner {
-            width: 36px; height: 36px;
-            border: 2px solid var(--border);
-            border-top-color: var(--accent);
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .skeleton-main  { flex: 1; min-height: 0; }
+        .skeleton-ctx   { height: 55px; flex-shrink: 0; }
         .loading-text {
-            font-size: 12px;
-            color: var(--accent);
+            font-size: 11px;
+            color: var(--text-lo);
             letter-spacing: 2px;
             text-transform: uppercase;
+            text-align: center;
+            padding: 6px 0 0;
         }
 
         /* ── Doc panel ── */
@@ -233,7 +217,6 @@
             overflow-y: auto;
             padding: 20px 20px 32px;
         }
-
         #doc-container::-webkit-scrollbar { width: 5px; }
         #doc-container::-webkit-scrollbar-track { background: transparent; }
         #doc-container::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -254,10 +237,11 @@
             width: 3px; height: 100%;
             border-radius: 10px 0 0 10px;
         }
-        .doc-section.accent-blue::before  { background: var(--accent); }
-        .doc-section.accent-green::before { background: var(--green); }
+        .doc-section.accent-blue::before   { background: var(--accent); }
+        .doc-section.accent-green::before  { background: var(--green); }
         .doc-section.accent-purple::before { background: #a78bfa; }
         .doc-section.accent-orange::before { background: #fb923c; }
+        .doc-section.accent-teal::before   { background: #2dd4bf; }
 
         .doc-section-title {
             font-size: 11px;
@@ -267,10 +251,11 @@
             margin: 0 0 10px 0;
             padding-left: 10px;
         }
-        .accent-blue  .doc-section-title { color: var(--accent); }
-        .accent-green .doc-section-title { color: var(--green); }
+        .accent-blue   .doc-section-title { color: var(--accent); }
+        .accent-green  .doc-section-title { color: var(--green); }
         .accent-purple .doc-section-title { color: #a78bfa; }
         .accent-orange .doc-section-title { color: #fb923c; }
+        .accent-teal   .doc-section-title { color: #2dd4bf; }
 
         .doc-section p {
             font-size: 13px;
@@ -282,11 +267,7 @@
         .doc-section p:last-child { margin-bottom: 0; }
         .doc-section strong { color: var(--text-hi); }
 
-        .doc-list {
-            list-style: none;
-            margin: 0;
-            padding: 0 0 0 10px;
-        }
+        .doc-list { list-style: none; margin: 0; padding: 0 0 0 10px; }
         .doc-list li {
             font-size: 13px;
             color: var(--text-mid);
@@ -297,12 +278,7 @@
             gap: 8px;
         }
         .doc-list li:last-child { border-bottom: none; }
-        .doc-list li::before {
-            content: '›';
-            color: var(--accent);
-            font-weight: bold;
-            flex-shrink: 0;
-        }
+        .doc-list li::before { content: '›'; color: var(--accent); font-weight: bold; flex-shrink: 0; }
 
         .stat-row {
             display: grid;
@@ -312,25 +288,20 @@
             margin-top: 4px;
         }
         .stat-card {
-            background: var(--bg-card2);
+            background: linear-gradient(135deg, var(--bg-card2) 0%, var(--bg-card) 100%);
             border: 1px solid var(--border);
             border-radius: 7px;
             padding: 10px 12px;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            cursor: default;
         }
-        .stat-label {
-            font-size: 10px;
-            color: var(--text-lo);
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            margin-bottom: 4px;
-        }
-        .stat-value {
-            font-size: 18px;
-            font-weight: 700;
-            color: var(--text-hi);
-        }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 1px var(--accent); }
+        .stat-label { font-size: 10px; color: var(--text-lo); text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 4px; }
+        .stat-value { font-size: 18px; font-weight: 700; color: var(--text-hi); }
         .stat-value.green { color: var(--green); }
         .stat-value.blue  { color: var(--accent); }
+        .stat-value.red   { color: var(--red); }
+        .stat-value.teal  { color: #2dd4bf; }
 
         .doc-intro {
             font-size: 13px;
@@ -344,7 +315,26 @@
         }
         .doc-intro strong { color: var(--accent); }
 
-        /* ── Theme toggle button ── */
+        /* ── Brush metrics section ── */
+        .brush-hint {
+            font-size: 12px;
+            color: var(--text-lo);
+            padding-left: 10px;
+            margin-bottom: 8px;
+            font-style: italic;
+        }
+        .brush-date-range {
+            font-size: 11px;
+            color: var(--text-mid);
+            padding: 6px 10px;
+            background: var(--bg-card2);
+            border-radius: 5px;
+            margin-bottom: 10px;
+            letter-spacing: 0.3px;
+        }
+        .brush-date-range span { color: var(--accent); font-weight: 600; }
+
+        /* ── Theme toggle ── */
         .theme-btn {
             padding: 7px 14px;
             background: transparent;
@@ -357,75 +347,20 @@
             transition: all 0.25s;
             white-space: nowrap;
         }
-        .theme-btn:hover {
-            color: var(--accent);
-            border-color: var(--accent);
-            box-shadow: var(--glow-blue);
-        }
+        .theme-btn:hover { color: var(--accent); border-color: var(--accent); box-shadow: var(--glow-blue); }
 
-        /* ── Stat-card hover enhancement ── */
-        .stat-card {
-            background: linear-gradient(135deg, var(--bg-card2) 0%, var(--bg-card) 100%);
-            border: 1px solid var(--border);
-            border-radius: 7px;
-            padding: 10px 12px;
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            cursor: default;
-        }
-        .stat-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0,0,0,0.3), 0 0 0 1px var(--accent);
-        }
-
-        /* ── Responsive: single-column on narrow screens ── */
+        /* ── Responsive ── */
         @media (max-width: 900px) {
             html, body { overflow: auto; }
-
-            #app {
-                grid-template-columns: 1fr;
-                grid-template-rows: auto auto 1fr auto;
-                height: auto;
-                min-height: 100vh;
-            }
-
-            #header {
-                grid-column: 1;
-                grid-row: 1;
-                padding: 0 16px;
-                gap: 10px;
-                flex-wrap: wrap;
-                height: auto;
-                min-height: 52px;
-                padding-top: 8px;
-                padding-bottom: 8px;
-            }
-
+            #app { grid-template-columns: 1fr; grid-template-rows: auto auto 1fr auto; height: auto; min-height: 100vh; }
+            #header { grid-column: 1; grid-row: 1; padding: 8px 16px; gap: 10px; flex-wrap: wrap; height: auto; min-height: 52px; }
             .header-title { font-size: 14px; }
-
-            #chart-container {
-                grid-column: 1;
-                grid-row: 2;
-                min-height: 480px;
-                height: 480px;
-                padding: 14px 16px 12px;
-                overflow: hidden;
-            }
-
-            #doc-container {
-                grid-column: 1;
-                grid-row: 3;
-                border-left: none;
-                border-top: 1px solid var(--border);
-                overflow-y: visible;
-                padding: 16px 16px 32px;
-            }
-
+            #chart-container { grid-column: 1; grid-row: 2; min-height: 480px; height: 480px; padding: 14px 16px 12px; overflow: hidden; }
+            #doc-container { grid-column: 1; grid-row: 3; border-left: none; border-top: 1px solid var(--border); overflow-y: visible; padding: 16px 16px 32px; }
             .stat-row { grid-template-columns: 1fr 1fr; }
         }
-
         @media (max-width: 560px) {
             .header-badges { display: none; }
-            .stat-row { grid-template-columns: 1fr 1fr; }
         }
     </style>
 </head>
@@ -434,9 +369,7 @@
 
     <!-- Header -->
     <div id="header">
-        <div class="header-title">
-            <span>AI</span> 爆发与科技巨头股价全景可视分析
-        </div>
+        <div class="header-title"><span>AI</span> 爆发与科技巨头股价全景可视分析</div>
         <div class="header-badges">
             <span class="badge badge-nvda"><span class="badge-dot"></span>NVDA</span>
             <span class="badge badge-tsla"><span class="badge-dot"></span>TSLA</span>
@@ -451,10 +384,12 @@
 
     <!-- Chart panel -->
     <div id="chart-container">
-        <div class="chart-subtitle">NVIDIA vs Tesla — 相对涨跌幅 vs AI 搜索热度 · 2021–2025 · Focus + Context 交互</div>
+        <div class="chart-subtitle">NVIDIA vs Tesla — 相对涨跌幅 (%) vs AI 搜索热度 · 2021–2025 · Focus + Context 交互</div>
         <div id="vis"></div>
+        <!-- Skeleton Screen Loading Overlay -->
         <div class="loading-overlay" :class="{ hidden: !isLoading }">
-            <div class="spinner"></div>
+            <div class="skeleton-block skeleton-main"></div>
+            <div class="skeleton-block skeleton-ctx"></div>
             <div class="loading-text">Initializing data streams...</div>
         </div>
     </div>
@@ -466,6 +401,45 @@
             本作品展示自 2021 年以来，<strong>AI 行业热度</strong>与科技巨头股价之间的深度联动关系。
             拖动底部时间轴可缩放主图，悬停查看精确数值。
         </p>
+
+        <!-- ── Feature 1: Brush Selection Metrics ── -->
+        <div class="doc-section accent-teal">
+            <div class="doc-section-title">📊 选区动态分析</div>
+            <template v-if="!brushActive">
+                <p class="brush-hint">在底部时间轴上拖动选择一段时间范围，此处将实时显示该区间内的涨跌幅表现。</p>
+            </template>
+            <template v-else>
+                <div class="brush-date-range">
+                    <span>{{ brushStartLabel }}</span> → <span>{{ brushEndLabel }}</span>
+                </div>
+                <div class="stat-row">
+                    <div class="stat-card">
+                        <div class="stat-label">NVDA 区间涨跌</div>
+                        <div class="stat-value" :class="brushNvdaPct >= 0 ? 'green' : 'red'">
+                            {{ brushNvdaPct !== null ? (brushNvdaPct >= 0 ? '+' : '') + brushNvdaPct.toFixed(2) + '%' : 'N/A' }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">TSLA 区间涨跌</div>
+                        <div class="stat-value" :class="brushTslaPct >= 0 ? 'green' : 'red'">
+                            {{ brushTslaPct !== null ? (brushTslaPct >= 0 ? '+' : '') + brushTslaPct.toFixed(2) + '%' : 'N/A' }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">NVDA 起始价</div>
+                        <div class="stat-value teal" style="font-size:14px">
+                            ${{ brushNvdaStart !== null ? brushNvdaStart.toFixed(2) : '—' }}
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-label">TSLA 起始价</div>
+                        <div class="stat-value teal" style="font-size:14px">
+                            ${{ brushTslaStart !== null ? brushTslaStart.toFixed(2) : '—' }}
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
 
         <div class="doc-section accent-blue">
             <div class="doc-section-title">研究问题</div>
@@ -504,22 +478,10 @@
         <div class="doc-section accent-blue">
             <div class="doc-section-title">开发耗时</div>
             <div class="stat-row">
-                <div class="stat-card">
-                    <div class="stat-label">总耗时</div>
-                    <div class="stat-value blue">12–14h</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">数据清洗</div>
-                    <div class="stat-value green">~4h</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">图层联动</div>
-                    <div class="stat-value green">~5h</div>
-                </div>
-                <div class="stat-card">
-                    <div class="stat-label">UI 设计</div>
-                    <div class="stat-value green">~3h</div>
-                </div>
+                <div class="stat-card"><div class="stat-label">总耗时</div><div class="stat-value blue">12–14h</div></div>
+                <div class="stat-card"><div class="stat-label">数据清洗</div><div class="stat-value green">~4h</div></div>
+                <div class="stat-card"><div class="stat-label">图层联动</div><div class="stat-value green">~5h</div></div>
+                <div class="stat-card"><div class="stat-label">UI 设计</div><div class="stat-value green">~3h</div></div>
             </div>
             <p style="margin-top:10px;">最耗时：CSV 日期含中文字符（"下午04:00:00"）导致解析失败，最终用正则强制转换为标准时间戳。</p>
         </div>
@@ -529,14 +491,48 @@
 
 <script>
 const { createApp } = Vue;
+
+/* ── Key-event annotations keyed by YYYY-MM-DD ── */
+const KEY_EVENTS = {
+    '2022-09-30': 'Tesla AI Day',
+    '2022-11-30': 'ChatGPT 发布',
+    '2023-05-24': 'NVDA 财报爆发'
+};
+
+/* Format a timestamp (ms) to YYYY-MM-DD */
+function fmtDate(ts) {
+    const d = new Date(ts);
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
 createApp({
-    data() { return { isLoading: true, isDark: true, chartData: [], trendData: [] } },
+    data() {
+        return {
+            isLoading: true,
+            isDark: true,
+            chartData: [],
+            trendData: [],
+            /* brush state */
+            brushActive: false,
+            brushStartLabel: '',
+            brushEndLabel: '',
+            brushNvdaPct: null,
+            brushTslaPct: null,
+            brushNvdaStart: null,
+            brushTslaStart: null,
+            _vegaView: null
+        };
+    },
     methods: {
         toggleTheme() {
             this.isDark = !this.isDark;
             document.documentElement.setAttribute('data-theme', this.isDark ? 'dark' : 'light');
             this.renderChart();
         },
+
         parseStockCSV(csvText, symbol) {
             const lines = csvText.trim().split(/\r?\n/);
             const headers = lines[0].split(',');
@@ -554,6 +550,7 @@ createApp({
             const base = data[0].Price;
             return data.map(d => ({ ...d, Pct: ((d.Price - base) / base) * 100 }));
         },
+
         parseTrendCSV(csvText) {
             const lines = csvText.trim().split(/\r?\n/);
             let data = [];
@@ -566,9 +563,38 @@ createApp({
             }
             return data;
         },
+
+        /* ── Feature 1: compute brush-range metrics ── */
+        onBrush(name, value) {
+            if (!value || !value.Date || value.Date.length < 2) {
+                this.brushActive = false;
+                return;
+            }
+            const [t0, t1] = value.Date;
+            this.brushActive = true;
+            this.brushStartLabel = fmtDate(t0);
+            this.brushEndLabel   = fmtDate(t1);
+
+            const nvda = this.chartData.filter(d => d.Symbol === 'NVDA' && d.Date >= t0 && d.Date <= t1);
+            const tsla = this.chartData.filter(d => d.Symbol === 'TSLA' && d.Date >= t0 && d.Date <= t1);
+
+            if (nvda.length >= 2) {
+                this.brushNvdaStart = nvda[0].Price;
+                this.brushNvdaPct   = ((nvda[nvda.length - 1].Price - nvda[0].Price) / nvda[0].Price) * 100;
+            } else { this.brushNvdaStart = null; this.brushNvdaPct = null; }
+
+            if (tsla.length >= 2) {
+                this.brushTslaStart = tsla[0].Price;
+                this.brushTslaPct   = ((tsla[tsla.length - 1].Price - tsla[0].Price) / tsla[0].Price) * 100;
+            } else { this.brushTslaStart = null; this.brushTslaPct = null; }
+        },
+
         async renderChart() {
             try {
                 this.isLoading = true;
+                this.brushActive = false;
+                if (this._vegaView) { this._vegaView.finalize(); this._vegaView = null; }
+
                 const [resN, resT, resTr] = await Promise.all([
                     fetch('./data/NVDA.csv'), fetch('./data/TSLA.csv'), fetch('./data/trends.csv')
                 ]);
@@ -580,6 +606,12 @@ createApp({
 
                 const css = getComputedStyle(document.documentElement);
                 const v = (name) => css.getPropertyValue(name).trim();
+
+                /* ── Feature 2: enrich chartData with event annotation ── */
+                const enriched = this.chartData.map(d => ({
+                    ...d,
+                    event: KEY_EVENTS[fmtDate(d.Date)] || null
+                }));
 
                 const spec = {
                     "$schema": "https://vega.github.io/schema/vega-lite/v5.json",
@@ -611,7 +643,7 @@ createApp({
                         "line": { "strokeWidth": 2 },
                         "area": { "opacity": 0.18 }
                     },
-                    "data": { "values": this.chartData },
+                    "data": { "values": enriched },
                     "vconcat": [
                         {
                             "width": "container",
@@ -641,10 +673,11 @@ createApp({
                                             "legend": { "title": "股票代码" }
                                         },
                                         "tooltip": [
-                                            { "field": "Date", "type": "temporal", "title": "日期", "format": "%Y-%m-%d" },
+                                            { "field": "Date",   "type": "temporal",    "title": "日期",   "format": "%Y-%m-%d" },
                                             { "field": "Symbol", "title": "代码" },
-                                            { "field": "Pct", "title": "涨跌幅", "format": "+.2f" },
-                                            { "field": "Price", "title": "收盘价", "format": ".2f" }
+                                            { "field": "Pct",    "title": "涨跌幅",     "format": "+.2f" },
+                                            { "field": "Price",  "title": "收盘价",     "format": ".2f" },
+                                            { "field": "event",  "title": "📌 关键事件" }
                                         ]
                                     }
                                 },
@@ -655,9 +688,9 @@ createApp({
                                 },
                                 {
                                     "data": { "values": [
-                                        { "d": "2022-09-30", "t": "Tesla AI Day", "y": 20 },
-                                        { "d": "2022-11-30", "t": "ChatGPT 发布", "y": 55 },
-                                        { "d": "2023-05-24", "t": "NVDA 财报爆发", "y": 90 }
+                                        { "d": "2022-09-30", "t": "Tesla AI Day",    "y": 20 },
+                                        { "d": "2022-11-30", "t": "ChatGPT 发布",    "y": 55 },
+                                        { "d": "2023-05-24", "t": "NVDA 财报爆发",   "y": 90 }
                                     ]},
                                     "mark": { "type": "text", "align": "left", "dx": 8, "fontWeight": "bold", "fontSize": 12, "color": "#94a3b8" },
                                     "encoding": {
@@ -682,11 +715,34 @@ createApp({
                     ]
                 };
 
-                vegaEmbed('#vis', spec, {
+                /* ── Feature 2: custom tooltip handler ── */
+                const tooltipHandler = (handler, event, item, value) => {
+                    if (!value) {
+                        handler.call(this, event, item, value);
+                        return;
+                    }
+                    /* Inject event label into tooltip value object */
+                    const dateKey = value['日期'] || (item && item.datum && fmtDate(item.datum.Date));
+                    const eventLabel = dateKey ? KEY_EVENTS[dateKey] : null;
+                    const enrichedValue = eventLabel
+                        ? { ...value, '📌 关键事件': eventLabel }
+                        : value;
+                    handler.call(this, event, item, enrichedValue);
+                };
+
+                const result = await vegaEmbed('#vis', spec, {
                     actions: false,
                     renderer: 'svg',
-                    tooltip: { theme: 'dark' }
+                    tooltip: { theme: this.isDark ? 'dark' : 'custom' }
                 });
+
+                this._vegaView = result.view;
+
+                /* ── Feature 1: listen to brush signal ── */
+                result.view.addSignalListener('brush', (name, value) => {
+                    this.onBrush(name, value);
+                });
+
                 this.isLoading = false;
             } catch (e) {
                 console.error(e);
